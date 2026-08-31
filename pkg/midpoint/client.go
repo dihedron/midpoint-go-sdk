@@ -130,7 +130,7 @@ func (c *Client) DoAs[T any, S any](ctx context.Context, principal string, metho
 
 		data, _ := io.ReadAll(response.Body)
 		slog.Debug("response body", "data", data)
-		fmt.Printf("%s\n", string(data))
+		//fmt.Printf("%s\n", string(data))
 
 		if err := json.NewDecoder(bytes.NewReader(data)).Decode(result); err != nil {
 			return response, fmt.Errorf("failed to decode response body: %w", err)
