@@ -2,14 +2,21 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/dihedron/midpoint-go-sdk/cmd/midpoint/command"
 	"github.com/jessevdk/go-flags"
+	"github.com/joho/godotenv"
 )
 
 func main() {
 	defer cleanup()
+
+	err := godotenv.Load()
+	if err != nil {
+		slog.Warn("error loading .env file", "error", err)
+	}
 
 	options := command.Commands{}
 	if _, err := flags.NewParser(&options, flags.Default).Parse(); err != nil {

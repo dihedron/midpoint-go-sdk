@@ -1,10 +1,7 @@
 package users
 
 import (
-	"context"
-
 	"github.com/dihedron/midpoint-go-sdk/internal/command/base"
-	"github.com/dihedron/midpoint-go-sdk/pkg/midpoint"
 )
 
 type Users struct {
@@ -12,9 +9,15 @@ type Users struct {
 }
 
 func (cmd *Users) Execute(args []string) error {
-	//http://localhost:8080/midpoint/ws/rest/self?options=raw
-	client := midpoint.New(cmd.Endpoint, cmd.Username, cmd.Password)
-	client.Do(context.Background(), "GET", "self", nil, nil)
-
+	/*
+		slog.Debug("running self command", "endpoint", cmd.Endpoint, "username", cmd.Username, "password", cmd.Password)
+		mp := midpoint.New(cmd.Endpoint, cmd.Username, cmd.Password)
+		self, err := mp.User.Read(context.Background())
+		if err != nil {
+			slog.Error("error reading self", "error", err)
+			return err
+		}
+		return cmd.Write(os.Stdout, self)
+	*/
 	return nil
 }
