@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -59,23 +60,42 @@ func New(baseURL string, username string, password string, opts ...Option) *Clie
 	return c
 }
 
-func (c *Client) Get[T any](ctx context.Context, path string) (*T, error) {
-	result := new(T)
-	if _, err := c.Do[T](ctx, http.MethodGet, path, nil, result); err != nil {
-		slog.Error("failed performing GET request", "path", path, "error", err)
-		return nil, err
+func (c *Client) Get[T any](ctx context.Context, path string) (*T, *Result, error) {
+	entity := new(T)
+	result, err := c.Do[T](ctx, http.MethodGet, path, nil, entity)
+	if err != nil {
+		slog.Error("failed to perform GET request", "path", path, "error", err)
+		return nil, result, err
+	}
+	return entity, result, nil
+}
+
+func (c *Client) Post[T any](ctx context.Context, path string, object *T) (*Result, error) {
+	entity := new(T)
+	result, err := c.Do(ctx, http.MethodPost, path, object, entity)
+	if err != nil {
+		slog.Error("failed to perform POST request", "path", path, "object", object, "error", err)
+		return result, err
 	}
 	return result, nil
 }
 
+type Result struct {
+	Status     string // e.g. "200 OK"
+	StatusCode int    // e.g. 200
+	Location   *url.URL
+	Headers    http.Header
+	Body       io.Reader
+}
+
 // Do executes an HTTP request, attaching Basic Auth and standard headers.
-func (c *Client) Do[T any, S any](ctx context.Context, method string, path string, payload *T, result *S) (*http.Response, error) {
-	return c.DoAs(ctx, "", method, path, payload, result)
+func (c *Client) Do[T any, S any](ctx context.Context, method string, path string, payload *T, entity *S) (*Result, error) {
+	return c.DoAs(ctx, "", method, path, payload, entity)
 }
 
 // DoAs executes an HTTP request, attaching Basic Auth and standard headers and impersonating
 // the given principal in the request.
-func (c *Client) DoAs[T any, S any](ctx context.Context, principal string, method string, path string, payload *T, result *S) (*http.Response, error) {
+func (c *Client) DoAs[T any, S any](ctx context.Context, principal string, method string, path string, payload *T, entity *S) (*Result, error) {
 	url := c.baseURL + path
 
 	var reader io.Reader
@@ -114,30 +134,55 @@ func (c *Client) DoAs[T any, S any](ctx context.Context, principal string, metho
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 
-	// ensure the response body is drained to allow TCP connection reuse.
-	// If the user wants to decode JSON into 'result', process it here.
-	if result != nil && response.Body != nil {
-		defer response.Body.Close()
+	r := &Result{
+		Status:     response.Status,
+		StatusCode: response.StatusCode,
+		Headers:    response.Header,
+	}
 
-		if response.StatusCode < 200 || response.StatusCode >= 300 {
-			rawBody, err := io.ReadAll(response.Body)
+	location, err := response.Location()
+	if err != nil && err != http.ErrNoLocation {
+		slog.Warn("failed to retrieve Location header")
+	} else if location != nil {
+		slog.Debug("location header", "location", location.String())
+		r.Location = location
+	}
+
+	if response.Body != nil {
+		// ensure the response body is drained to allow TCP connection reuse;
+		// use separate function to allow immediate response body close
+		if err := func() error {
+			defer response.Body.Close()
+			data, err := io.ReadAll(response.Body)
 			if err != nil {
 				slog.Error("error reading response body", "error", err)
-				return nil, err
+				return err
 			}
-			return response, fmt.Errorf("API error [Status %d]: %s", response.StatusCode, string(rawBody))
-		}
-
-		data, _ := io.ReadAll(response.Body)
-		slog.Debug("response body", "data", data)
-		//fmt.Printf("%s\n", string(data))
-
-		if err := json.NewDecoder(bytes.NewReader(data)).Decode(result); err != nil {
-			return response, fmt.Errorf("failed to decode response body: %w", err)
+			slog.Debug("response body", "data", data)
+			r.Body = bytes.NewReader(data)
+			return nil
+		}(); err != nil {
+			return nil, err
 		}
 	}
 
-	return response, nil
+	// if the user wants to decode JSON into 'entity', process it here
+	if entity != nil && r.Body != nil {
+		if response.StatusCode < 200 || response.StatusCode >= 300 {
+			data, err := io.ReadAll(r.Body)
+			if err != nil {
+				slog.Error("error reading response body", "error", err)
+				return r, err
+			}
+			r.Body = bytes.NewReader(data)
+			if err := json.NewDecoder(r.Body).Decode(entity); err != nil {
+				slog.Error("failed to decode response", "error", err)
+				return nil, fmt.Errorf("failed to decode response body: %w", err)
+			}
+		}
+	}
+
+	return r, nil
 }
 
 type Error struct {

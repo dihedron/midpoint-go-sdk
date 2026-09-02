@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/dihedron/rawdata"
 )
 
 type UserService struct {
@@ -155,24 +157,30 @@ type User struct {
 	FamilyName *string `json:"familyName,omitempty" yaml:"familyName,omitempty"`
 }
 
+// UnmarshalFlag provides support for loading user's data at the
+// command line from a file on disk.
+func (u *User) UnmarshalFlag(value string) error {
+	return rawdata.UnmarshalInto(value, u)
+}
+
 type userWrapper struct {
 	User *User `json:"user,omitempty" yaml:"user,omitempty"`
 }
 
 func (s *UserService) Read(ctx context.Context, id string) (*User, error) {
-	response, err := s.client.Get[userWrapper](ctx, fmt.Sprintf("users/%s", id))
+	entity, result, err := s.client.Get[userWrapper](ctx, fmt.Sprintf("users/%s?options=raw", id))
 	if err != nil {
-		slog.Error("error reading user", "id", id, "error", err)
+		slog.Error("error reading user", "id", id, "result", result, "error", err)
 		return nil, err
 	}
-	return response.User, nil
+	return entity.User, nil
 }
 
-// func (s *UserService) Create(ctx context.Context, user *User) (*User, error) {
-// 	user, err := s.client.Post[UserData](ctx, fmt.Sprintf("users/%s", id))
-// 	if err != nil {
-// 		slog.Error("error reading user", "id", id, "error", err)
-// 		return nil, err
-// 	}
-// 	return user, nil
-// }
+func (s *UserService) Create(ctx context.Context, user *User) error {
+	result, err := s.client.Post(ctx, "users?options=raw", &userWrapper{User: user})
+	if err != nil {
+		slog.Error("error creating user", "result", result, "error", err)
+		return err
+	}
+	return nil
+}

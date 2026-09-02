@@ -8,7 +8,9 @@
 *.so
 *.dylib
 dist/
-_test/
+_test/midpoint
+_test/midpoint-quickstart.sh
+_test/*.log
 
 # Test binary, built with `go test -c`
 *.test
@@ -25,9 +27,6 @@ profile.cov
 # Go workspace file
 go.work
 go.work.sum
-
-# env file
-.env
 
 # Editor/IDE
 # .idea/
