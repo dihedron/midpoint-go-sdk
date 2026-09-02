@@ -5,15 +5,17 @@ import (
 	"log/slog"
 )
 
+// SelfService is the Service tha retrieves information about the current user's profile.
 type SelfService struct {
 	Service
 }
 
-func (s *SelfService) Read(ctx context.Context) (*UserData, error) {
-	self, err := s.client.Get[UserData](ctx, "self?options=raw")
+// Read retrieves information about the current user's profile.
+func (s *SelfService) Read(ctx context.Context) (*User, error) {
+	response, err := s.client.Get[userWrapper](ctx, "self?options=raw")
 	if err != nil {
 		slog.Error("error reading self", "error", err)
 		return nil, err
 	}
-	return self, nil
+	return response.User, nil
 }
