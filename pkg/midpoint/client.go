@@ -1,15 +1,9 @@
 package midpoint
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
-	"fmt"
-	"io"
-	"log/slog"
-	"net/http"
-	"net/url"
 	"time"
+
+	"resty.dev/v3"
 )
 
 // Client handles REST API interactions with Basic Auth.
@@ -17,9 +11,10 @@ type Client struct {
 	baseURL  string
 	username string
 	password string
-	client   *http.Client
-	User     *UserService
-	Self     *SelfService
+	//client   *http.Client
+	User   *UserService
+	Self   *SelfService
+	client *resty.Client
 }
 
 // option defines functional options for configuring the Client.
@@ -28,14 +23,42 @@ type Option func(*Client)
 // WithTimeout configures a custom timeout for the HTTP client.
 func WithTimeout(timeout time.Duration) Option {
 	return func(c *Client) {
-		c.client.Timeout = timeout
+		c.client.SetTimeout(timeout)
 	}
 }
 
-// WithHTTPClient allows passing a custom net/http Client.
-func WithHTTPClient(custom *http.Client) Option {
+// WithTrustAnchors configures the root certificates for the HTTP client.
+func WithTrustAnchors(paths ...string) Option {
 	return func(c *Client) {
-		c.client = custom
+		c.client.SetRootCertificates(paths...)
+	}
+}
+
+// WithTrustAnchorsWatcher configures the root certificates for the HTTP client.
+func WithTrustAnchorsWatcher(duration time.Duration, paths ...string) Option {
+	return func(c *Client) {
+		c.client.SetRootCertificatesWatcher(&resty.CertWatcherOptions{PoolInterval: duration}, paths...)
+	}
+}
+
+// WithClientCertificates configures the client certificates for the HTTP client.
+func WithClientCertificates(paths ...string) Option {
+	return func(c *Client) {
+		c.client.SetClientRootCertificates(paths...)
+	}
+}
+
+// WithClientCertificatesWatcher configures the client certificates for the HTTP client.
+func WithClientCertificatesWatcher(duration time.Duration, paths ...string) Option {
+	return func(c *Client) {
+		c.client.SetClientRootCertificatesWatcher(&resty.CertWatcherOptions{PoolInterval: duration}, paths...)
+	}
+}
+
+// WithRetry configures the retry count for the HTTP client.
+func WithRetry(count int) Option {
+	return func(c *Client) {
+		c.client.SetRetryCount(count)
 	}
 }
 
@@ -45,9 +68,10 @@ func New(baseURL string, username string, password string, opts ...Option) *Clie
 		baseURL:  baseURL,
 		username: username,
 		password: password,
-		client: &http.Client{
-			Timeout: 15 * time.Second,
-		},
+		// client: &http.Client{
+		// 	Timeout: 15 * time.Second,
+		// },
+		client: resty.New(),
 	}
 
 	for _, opt := range opts {
@@ -60,6 +84,7 @@ func New(baseURL string, username string, password string, opts ...Option) *Clie
 	return c
 }
 
+/*
 func (c *Client) Get[T any](ctx context.Context, path string) (*T, *Result, error) {
 	entity := new(T)
 	result, err := c.Do[T](ctx, http.MethodGet, path, nil, entity)
@@ -184,6 +209,7 @@ func (c *Client) DoAs[T any, S any](ctx context.Context, principal string, metho
 
 	return r, nil
 }
+*/
 
 type Error struct {
 	Namespace string `json:"@ns"`
