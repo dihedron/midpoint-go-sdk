@@ -2,10 +2,10 @@ include ../help.mk
 
 default: help
 
-.phony: midpoint-start 
+.phony: midpoint-start
 midpoint-start: ## Create or restart the midpoint instance
 	@mkdir -p midpoint
-	@cd midpoint && curl -O https://raw.githubusercontent.com/Evolveum/midpoint-docker/master/midpoint-quickstart.sh && chmod 744 midpoint-quickstart.sh && patch -i ../add-BdI-CA.patch && ./midpoint-quickstart.sh start --password 'S3cret!!' && cd ..
+	@cd midpoint && curl -O https://raw.githubusercontent.com/Evolveum/midpoint-docker/master/midpoint-quickstart.sh && chmod 744 midpoint-quickstart.sh && ./midpoint-quickstart.sh start --password 'S3cret!!' && cd ..
 
 .phony: midpoint-stop
 midpoint-stop: ## Stop the midpoint instance
