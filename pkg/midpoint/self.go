@@ -12,11 +12,15 @@ type SelfService struct {
 
 // Read retrieves information about the current user's profile.
 func (s *SelfService) Read(ctx context.Context) (*User, error) {
-	//entity, result, err := s.client.Get[userWrapper](ctx, "self?options=raw")
-	response, err := s.client.client.R().Get(ctx, "/self?options=raw")
+	response, err := s.client.
+		R().
+		SetContext(ctx).
+		SetQueryParam("options", "raw").
+		SetResult(&userWrapper{}).
+		Get("/self")
 	if err != nil {
-		slog.Error("error reading self", "error", err, "result", result)
+		slog.Error("error reading self", "error", err, "result", response)
 		return nil, err
 	}
-	return entity.User, nil
+	return response.Result().(*userWrapper).User, nil
 }

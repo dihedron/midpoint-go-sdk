@@ -2,7 +2,6 @@ package midpoint
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -168,19 +167,34 @@ type userWrapper struct {
 }
 
 func (s *UserService) Read(ctx context.Context, id string) (*User, error) {
-	entity, result, err := s.client.Get[userWrapper](ctx, fmt.Sprintf("users/%s?options=raw", id))
+
+	response, err := s.client.
+		R().
+		SetContext(ctx).
+		SetPathParam("id", id).
+		SetQueryParam("options", "raw").
+		SetResult(&userWrapper{}).
+		Get("/users/{%sid}")
 	if err != nil {
-		slog.Error("error reading user", "id", id, "result", result, "error", err)
+		slog.Error("error reading self", "error", err, "result", response)
 		return nil, err
 	}
-	return entity.User, nil
+	return response.Result().(*userWrapper).User, nil
+
+	// entity, result, err := s.api.Get[userWrapper](ctx, fmt.Sprintf("users/%s?options=raw", id))
+	// if err != nil {
+	// 	slog.Error("error reading user", "id", id, "result", result, "error", err)
+	// 	return nil, err
+	// }
+	// return entity.User, nil
 }
 
 func (s *UserService) Create(ctx context.Context, user *User) error {
-	result, err := s.client.Post(ctx, "users?options=raw", &userWrapper{User: user})
-	if err != nil {
-		slog.Error("error creating user", "result", result, "error", err)
-		return err
-	}
+	// TODO: implement
+	// result, err := s.api.Post(ctx, "users?options=raw", &userWrapper{User: user})
+	// if err != nil {
+	// 	slog.Error("error creating user", "result", result, "error", err)
+	// 	return err
+	// }
 	return nil
 }

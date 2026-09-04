@@ -21,7 +21,14 @@ func (cmd *Read) Execute(args []string) error {
 		slog.Error("no ids provided")
 		return fmt.Errorf("at least one ID must be provided")
 	}
-	mp := midpoint.New(cmd.Endpoint, cmd.Username, cmd.Password)
+	options := []midpoint.Option{
+		midpoint.WithDebug(cmd.Debug),
+	}
+	if cmd.Impersonate != nil {
+		options = append(options, midpoint.WithImpersonation(*cmd.Impersonate))
+	}
+	mp := midpoint.New(cmd.Endpoint, cmd.Username, cmd.Password, options...)
+
 	var result error
 	for _, arg := range args {
 		slog.Debug("reading user", "id", arg)
