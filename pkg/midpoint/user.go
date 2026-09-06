@@ -2,7 +2,10 @@ package midpoint
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/dihedron/rawdata"
@@ -167,14 +170,13 @@ type userWrapper struct {
 }
 
 func (s *UserService) Read(ctx context.Context, id string) (*User, error) {
-
 	response, err := s.client.
 		R().
 		SetContext(ctx).
 		SetPathParam("id", id).
 		SetQueryParam("options", "raw").
 		SetResult(&userWrapper{}).
-		Get("/users/{%sid}")
+		Get("/users/{id}")
 	if err != nil {
 		slog.Error("error reading self", "error", err, "result", response)
 		return nil, err
@@ -189,12 +191,26 @@ func (s *UserService) Read(ctx context.Context, id string) (*User, error) {
 	// return entity.User, nil
 }
 
-func (s *UserService) Create(ctx context.Context, user *User) error {
-	// TODO: implement
-	// result, err := s.api.Post(ctx, "users?options=raw", &userWrapper{User: user})
-	// if err != nil {
-	// 	slog.Error("error creating user", "result", result, "error", err)
-	// 	return err
-	// }
-	return nil
+func (s *UserService) Create(ctx context.Context, user *User) (string, error) {
+	response, err := s.client.
+		R().
+		SetContext(ctx).
+		SetQueryParam("options", "raw").
+		//SetResult(&userWrapper{}).
+		//SetBody()
+		SetBody(&userWrapper{User: user}).
+		Post("/users")
+	if err != nil {
+		slog.Error("error reading self", "error", err, "result", response)
+		return "", err
+	}
+	if response.StatusCode() == http.StatusCreated {
+		location := response.Header().Get("Location")
+		id := location[strings.LastIndex(location, "users/")+len("users/"):]
+		slog.Debug("user created", "location", location, "id", id)
+		return id, nil
+	} else if response.StatusCode() == http.StatusConflict {
+		return "", fmt.Errorf("user already exists")
+	}
+	return "", fmt.Errorf("unexpected status code: %d", response.StatusCode())
 }

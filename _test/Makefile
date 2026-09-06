@@ -2,21 +2,25 @@ include ../help.mk
 
 default: help
 
-.phony: midpoint-start
-midpoint-start: ## Create or restart the midpoint instance
+midpoint-quickstart.sh: ## Download the midpoint quickstart script
 	@mkdir -p midpoint
-	@cd midpoint && curl -O https://raw.githubusercontent.com/Evolveum/midpoint-docker/master/midpoint-quickstart.sh && chmod 744 midpoint-quickstart.sh && ./midpoint-quickstart.sh start --password 'S3cret!!' && cd ..
+	@cd midpoint && curl -O https://raw.githubusercontent.com/Evolveum/midpoint-docker/master/midpoint-quickstart.sh && chmod 744 midpoint-quickstart.sh && cd ..
+
+.phony: midpoint-start
+midpoint-start: midpoint-quickstart.sh ## Create or restart the midpoint instance
+	@mkdir -p midpoint
+	@cd midpoint && ./midpoint-quickstart.sh start --password 'S3cret!!' && cd ..
 
 .phony: midpoint-stop
-midpoint-stop: ## Stop the midpoint instance
+midpoint-stop: midpoint-quickstart.sh ## Stop the midpoint instance
 	@cd midpoint && ./midpoint-quickstart.sh stop && cd ..
 
 .phony: midpoint-info
-midpoint-info: ## Print info about the midpoint instance
+midpoint-info: midpoint-quickstart.sh ## Print info about the midpoint instance
 	@cd midpoint && ./midpoint-quickstart.sh info && cd ..
 
 .phony: midpoint-delete
-midpoint-delete: ## Destroy the midpoint instance (including data)
+midpoint-delete: midpoint-quickstart.sh ## Destroy the midpoint instance (including data)
 	@cd midpoint && ./midpoint-quickstart.sh delete && cd ..
 	@rm -rf midpoint
 

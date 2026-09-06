@@ -97,9 +97,21 @@ func WithImpersonation(principal string) Option {
 	}
 }
 
+func WithTraceRequest(enabled bool) Option {
+	return func(c *resty.Client) {
+		c.SetTrace(enabled)
+	}
+}
+
+func WithSaveResponse(enabled bool, path string) Option {
+	return func(c *resty.Client) {
+		c.SetResponseSaveDirectory(path)
+		c.SetResponseSaveToFile(enabled)
+	}
+}
+
 // New initializes and returns a new REST API client.
 func New(baseURL string, username string, password string, opts ...Option) *API {
-
 	client := resty.
 		New().
 		SetBasicAuth(username, password).

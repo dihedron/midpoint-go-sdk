@@ -15,9 +15,17 @@ type Create struct {
 }
 
 func (cmd *Create) Execute(args []string) error {
-	slog.Debug("running user create command", "endpoint", cmd.Endpoint, "username", cmd.Username, "password", cmd.Password, "name", args)
+	slog.Debug("running user create command", "endpoint", cmd.Endpoint, "username", cmd.Username, "password", cmd.Password, "user", *cmd.User)
 	mp := midpoint.New(cmd.Endpoint, cmd.Username, cmd.Password)
-	user := cmd.User
-	cmd.Write(os.Stdout, user)
-	return mp.User.Create(context.Background(), user)
+	// user := cmd.User
+	// cmd.Write(os.Stdout, user)
+	id, err := mp.User.Create(context.Background(), cmd.User)
+	if err != nil {
+		slog.Error("failed to create user", "error", err)
+		return err
+	}
+	slog.Debug("user created", "id", id)
+	cmd.Write(os.Stdout, id)
+
+	return nil
 }
