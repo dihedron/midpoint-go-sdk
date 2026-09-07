@@ -11,12 +11,12 @@ import (
 	"github.com/dihedron/midpoint-go-sdk/pkg/midpoint"
 )
 
-type Read struct {
+type Delete struct {
 	base.Command
 }
 
-func (cmd *Read) Execute(args []string) error {
-	slog.Debug("running user read command", "endpoint", cmd.Endpoint, "username", cmd.Username, "password", cmd.Password, "ids", args)
+func (cmd *Delete) Execute(args []string) error {
+	slog.Debug("running user delete command", "endpoint", cmd.Endpoint, "username", cmd.Username, "password", cmd.Password, "ids", args)
 	if len(args) == 0 {
 		slog.Error("no ids provided")
 		return fmt.Errorf("at least one ID must be provided")
@@ -31,14 +31,14 @@ func (cmd *Read) Execute(args []string) error {
 
 	var result error
 	for _, arg := range args {
-		slog.Debug("reading user", "id", arg)
-		self, err := mp.User.Read(context.Background(), arg)
+		slog.Debug("deleting user", "id", arg)
+		err := mp.User.Delete(context.Background(), arg)
 		if err != nil {
-			slog.Error("error reading user", "id", arg, "error", err)
+			slog.Error("error deleting user", "id", arg, "error", err)
 			errors.Join(result, err)
 			continue
 		}
-		if err = cmd.Write(os.Stdout, self); err != nil {
+		if err = cmd.Write(os.Stdout, arg); err != nil {
 			errors.Join(result, err)
 		}
 	}

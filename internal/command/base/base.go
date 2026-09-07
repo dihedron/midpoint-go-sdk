@@ -17,9 +17,13 @@ type Command struct {
 	Username string `short:"U" long:"username" description:"The username for authentication." required:"true" env:"MIDPOINT_USERNAME"`
 	// Password specifies the password for authentication.
 	Password string `short:"P" long:"password" description:"The password for authentication." required:"true" env:"MIDPOINT_PASSWORD"`
+	// Impersonate specifies the principal to use for impersonation in API calls.
+	Impersonate *string `short:"I" long:"impersonate" description:"The principal to use for impersonation in API calls." optional:"true" env:"MIDPOINT_IMPERSONATE"`
 	// Format specifies the output format.
 	//lint:ignore SA5008 duplicate alias tags are legitimate
 	Format string `short:"F" long:"format" description:"The format of the output." optional:"true" default:"yaml" choice:"text" choice:"json" choice:"yaml" choice:"none" env:"MIDPOINT_FORMAT"`
+	// Debug enables debug mode.
+	Debug bool `short:"D" long:"debug" description:"Enable debug mode." optional:"true" env:"MIDPOINT_DEBUG"`
 }
 
 func (cmd *Command) Write(stream io.Writer, object any) error {

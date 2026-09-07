@@ -1,9 +1,13 @@
 package midpoint
 
-import "errors"
+import (
+	"errors"
+
+	"resty.dev/v3"
+)
 
 type Service struct {
-	client *Client
+	client *resty.Client
 }
 
 var ErrNotImplemented = errors.New("not implemented")
