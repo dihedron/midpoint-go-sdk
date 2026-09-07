@@ -1,4 +1,4 @@
-package users
+package user
 
 import (
 	"context"
@@ -11,12 +11,12 @@ import (
 	"github.com/dihedron/midpoint-go-sdk/pkg/midpoint"
 )
 
-type Read struct {
+type Policy struct {
 	base.Command
 }
 
-func (cmd *Read) Execute(args []string) error {
-	slog.Debug("running user read command", "endpoint", cmd.Endpoint, "username", cmd.Username, "password", cmd.Password, "ids", args)
+func (cmd *Policy) Execute(args []string) error {
+	slog.Debug("running user password policy command", "endpoint", cmd.Endpoint, "username", cmd.Username, "password", cmd.Password, "ids", args)
 	if len(args) == 0 {
 		slog.Error("no ids provided")
 		return fmt.Errorf("at least one ID must be provided")
@@ -32,7 +32,7 @@ func (cmd *Read) Execute(args []string) error {
 	var result error
 	for _, arg := range args {
 		slog.Debug("reading user", "id", arg)
-		self, err := mp.User.Read(context.Background(), arg)
+		self, err := mp.User.PasswordPolicy(context.Background(), arg)
 		if err != nil {
 			slog.Error("error reading user", "id", arg, "error", err)
 			errors.Join(result, err)

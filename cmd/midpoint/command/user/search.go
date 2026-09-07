@@ -1,4 +1,4 @@
-package users
+package user
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 )
 
 type Search struct {
-	Query string `short:"q" long:"query" description:"The query to filter results." required:"true" default:"*"`
 	base.Command
+	Query string `short:"q" long:"query" description:"The query to filter results." required:"true" default:"*"`
 }
 
 func (cmd *Search) Execute(args []string) error {

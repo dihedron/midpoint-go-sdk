@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -16,10 +17,22 @@ type UserService struct {
 }
 
 type Reference struct {
-	Ns       *string `json:"@ns,omitempty" yaml:"@ns,omitempty"`
-	Oid      *string `json:"oid,omitempty" yaml:"oid,omitempty"`
-	Relation *string `json:"relation,omitempty" yaml:"relation,omitempty"`
-	Type     *string `json:"type,omitempty" yaml:"type,omitempty"`
+	Ns         *string `json:"@ns,omitempty" yaml:"@ns,omitempty"`
+	Oid        *string `json:"oid,omitempty" yaml:"oid,omitempty"`
+	Relation   *string `json:"relation,omitempty" yaml:"relation,omitempty"`
+	Type       *string `json:"type,omitempty" yaml:"type,omitempty"`
+	TargetName *string `json:"targetName,omitempty" yaml:"targetName,omitempty"`
+}
+
+type Storage struct {
+	CreateTimestamp *time.Time `json:"createTimestamp,omitempty" yaml:"createTimestamp,omitempty"`
+	CreateChannel   *string    `json:"createChannel,omitempty" yaml:"createChannel,omitempty"`
+	CreatorRef      *Reference `json:"creatorRef"`
+	CreateTaskRef   *Reference `json:"createTaskRef"`
+	ModifyTimestamp *time.Time `json:"modifyTimestamp,omitempty" yaml:"modifyTimestamp,omitempty"`
+	ModifierRef     *Reference `json:"modifierRef"`
+	ModifyChannel   *string    `json:"modifyChannel,omitempty" yaml:"modifyChannel,omitempty"`
+	ModifyTaskRef   *Reference `json:"modifyTaskRef"`
 }
 
 type User struct {
@@ -31,17 +44,9 @@ type User struct {
 	Indestructible bool    `json:"indestructible,omitempty" yaml:"indestructible,omitempty"`
 	Description    *string `json:"description,omitempty" yaml:"description,omitempty"`
 	Metadata       *struct {
-		Ns      *string `json:"@ns,omitempty" yaml:"@ns,omitempty"`
-		Storage *struct {
-			CreateTimestamp *time.Time `json:"createTimestamp,omitempty" yaml:"createTimestamp,omitempty"`
-			CreateChannel   *string    `json:"createChannel,omitempty" yaml:"createChannel,omitempty"`
-			CreatorRef      *Reference `json:"creatorRef"`
-			CreateTaskRef   *Reference `json:"createTaskRef"`
-			ModifyTimestamp *time.Time `json:"modifyTimestamp,omitempty" yaml:"modifyTimestamp,omitempty"`
-			ModifierRef     *Reference `json:"modifierRef"`
-			ModifyChannel   *string    `json:"modifyChannel,omitempty" yaml:"modifyChannel,omitempty"`
-			ModifyTaskRef   *Reference `json:"modifyTaskRef"`
-		} `json:"storage,omitempty" yaml:"storage,omitempty"`
+		Ns      *string  `json:"@ns,omitempty" yaml:"@ns,omitempty"`
+		ID      int      `json:"@id,omitempty" yaml:"@id,omitempty"`
+		Storage *Storage `json:"storage,omitempty" yaml:"storage,omitempty"`
 		Process *struct {
 			RequestTimestamp *time.Time `json:"requestTimestamp,omitempty" yaml:"requestTimestamp,omitempty"`
 			RequestorRef     *Reference `json:"requestorRef"`
@@ -49,21 +54,15 @@ type User struct {
 		Provisioning *struct {
 			LastProvisioningTimestamp *time.Time `json:"lastProvisioningTimestamp,omitempty" yaml:"lastProvisioningTimestamp,omitempty"`
 		} `json:"provisioning,omitempty" yaml:"provisioning,omitempty"`
-		ID int `json:"@id,omitempty" yaml:"@id,omitempty"`
 	} `json:"@metadata,omitempty" yaml:"@metadata,omitempty"`
 	Assignment *[]struct {
 		ID         int     `json:"@id,omitempty" yaml:"@id,omitempty"`
 		Identifier *string `json:"identifier,omitempty" yaml:"identifier,omitempty"`
 		Ns         *string `json:"@ns,omitempty" yaml:"@ns,omitempty"`
 		Metadata   *struct {
-			ID      int     `json:"@id,omitempty" yaml:"@id,omitempty"`
-			Ns      *string `json:"@ns,omitempty" yaml:"@ns,omitempty"`
-			Storage *struct {
-				CreateTimestamp *time.Time `json:"createTimestamp,omitempty" yaml:"createTimestamp,omitempty"`
-				CreateChannel   *string    `json:"createChannel,omitempty" yaml:"createChannel,omitempty"`
-				CreatorRef      *Reference `json:"creatorRef,omitempty" yaml:"creatorRef,omitempty"`
-				CreateTaskRef   *Reference `json:"createTaskRef,omitempty" yaml:"createTaskRef,omitempty"`
-			} `json:"storage,omitempty" yaml:"storage,omitempty"`
+			ID      int      `json:"@id,omitempty" yaml:"@id,omitempty"`
+			Ns      *string  `json:"@ns,omitempty" yaml:"@ns,omitempty"`
+			Storage *Storage `json:"storage,omitempty" yaml:"storage,omitempty"`
 			Process *struct {
 				RequestTimestamp *time.Time `json:"requestTimestamp,omitempty" yaml:"requestTimestamp,omitempty"`
 				RequestorRef     *Reference `json:"requestorRef,omitempty" yaml:"requestorRef,omitempty"`
@@ -87,11 +86,9 @@ type User struct {
 	RoleMembershipRef []struct {
 		Ns       *string `json:"@ns,omitempty" yaml:"@ns,omitempty"`
 		Metadata *struct {
-			Ns      *string `json:"@ns,omitempty" yaml:"@ns,omitempty"`
-			ID      int     `json:"@id,omitempty" yaml:"@id,omitempty"`
-			Storage *struct {
-				CreateTimestamp *time.Time `json:"createTimestamp,omitempty" yaml:"createTimestamp,omitempty"`
-			} `json:"storage,omitempty" yaml:"storage,omitempty"`
+			Ns         *string  `json:"@ns,omitempty" yaml:"@ns,omitempty"`
+			ID         int      `json:"@id,omitempty" yaml:"@id,omitempty"`
+			Storage    *Storage `json:"storage,omitempty" yaml:"storage,omitempty"`
 			Provenance *struct {
 				AssignmentPath *struct {
 					SourceRef *Reference `json:"sourceRef,omitempty" yaml:"sourceRef,omitempty"`
@@ -118,12 +115,9 @@ type User struct {
 	Credentials *struct {
 		Password *struct {
 			Metadata *struct {
-				Ns      *string `json:"@ns,omitempty" yaml:"@ns,omitempty"`
-				Storage *struct {
-					CreateTimestamp *time.Time `json:"createTimestamp,omitempty" yaml:"createTimestamp,omitempty"`
-					CreateChannel   *string    `json:"createChannel,omitempty" yaml:"createChannel,omitempty"`
-				} `json:"storage,omitempty" yaml:"storage,omitempty"`
-				ID int `json:"@id,omitempty" yaml:"@id,omitempty"`
+				Ns      *string  `json:"@ns,omitempty" yaml:"@ns,omitempty"`
+				Storage *Storage `json:"storage,omitempty" yaml:"storage,omitempty"`
+				ID      int      `json:"@id,omitempty" yaml:"@id,omitempty"`
 			} `json:"@metadata,omitempty" yaml:"@metadata,omitempty"`
 			Value *struct {
 				EncryptedData *struct {
@@ -168,6 +162,14 @@ type User struct {
 	FamilyName *string    `json:"familyName,omitempty" yaml:"familyName,omitempty"`
 	Title      string     `json:"title,omitempty" yaml:"title,omitempty"`
 	LinkRef    *Reference `json:"linkRef,omitempty" yaml:"linkRef,omitempty"`
+}
+
+type Password struct {
+	MinOccurs                     *string    `json:"minOccurs,omitempty" yaml:"minOccurs,omitempty"`
+	LockoutMaxFailedAttempts      int        `json:"lockoutMaxFailedAttempts,omitempty" yaml:"lockoutMaxFailedAttempts,omitempty"`
+	LockoutFailedAttemptsDuration *string    `json:"lockoutFailedAttemptsDuration,omitempty" yaml:"lockoutFailedAttemptsDuration,omitempty"`
+	LockoutDuration               *string    `json:"lockoutDuration,omitempty" yaml:"lockoutDuration,omitempty"`
+	ValuePolicyRef                *Reference `json:"valuePolicyRef,omitempty" yaml:"valuePolicyRef,omitempty"`
 }
 
 // UnmarshalFlag provides support for loading user's data at the
@@ -280,4 +282,36 @@ func (s *UserService) Delete(ctx context.Context, id string) error {
 		slog.Error("invalid response status code in user deletion", "id", id, "error", err, "result", response)
 	}
 	return nil
+}
+
+func (s *UserService) PasswordPolicy(ctx context.Context, id string) (*Password, error) {
+	error := &Error{}
+	response, err := s.client.
+		R().
+		SetContext(ctx).
+		SetPathParam("id", id).
+		SetQueryParam("options", "raw").
+		SetResult(&userPasswordPolicyWrapper{}).
+		SetResultError(error).
+		Get("/users/{id}/policy")
+	if err != nil {
+		slog.Error("error reading user password policy", "id", id, "error", err, "result", response)
+		return nil, err
+	}
+
+	func() {
+		f, _ := os.Create("output.json")
+		defer f.Close()
+		fmt.Fprintf(f, "------------------------ RESPONSE ------------------------ %s\n----------------------------------------------------------", response.String())
+	}()
+
+	return response.Result().(*userPasswordPolicyWrapper).Object.Password, nil
+}
+
+type userPasswordPolicyWrapper struct {
+	Ns     *string `json:"@ns,omitempty" yaml:"@ns,omitempty"`
+	Object struct {
+		Type     *string   `json:"@type,omitempty" yaml:"@type,omitempty"`
+		Password *Password `json:"password,omitempty" yaml:"password,omitempty"`
+	} `json:"object,omitempty" yaml:"object,omitempty"`
 }
