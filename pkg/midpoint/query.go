@@ -1,23 +1,33 @@
 package midpoint
 
-type Query struct {
-	Data Data `json:"query"`
+import "encoding/json"
+
+type query struct {
+	Data data `json:"query"`
 }
 
-type Data struct {
-	Filter Filter `json:"filter"`
+type data struct {
+	Filter filter `json:"filter"`
 }
 
-type Filter struct {
+type filter struct {
 	Text string `json:"text"`
 }
 
-func NewQuery(text string) Query {
-	return Query{
-		Data: Data{
-			Filter: Filter{
+func (q query) String() string {
+	value, _ := json.Marshal(q)
+	return string(value)
+}
+
+func Query(text string) string {
+	if text == "" || text == "*" {
+		return `{"query":""}`
+	}
+	return query{
+		Data: data{
+			Filter: filter{
 				Text: text,
 			},
 		},
-	}
+	}.String()
 }

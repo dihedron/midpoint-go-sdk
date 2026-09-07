@@ -116,8 +116,8 @@ func New(baseURL string, username string, password string, opts ...Option) *API 
 		New().
 		SetBasicAuth(username, password).
 		SetBaseURL(baseURL).
-		SetHeader("Accept", "application/json")
-
+		SetHeader("Accept", "application/json").
+		SetLoggerWarnLevel(true)
 	for _, opt := range opts {
 		opt(client)
 	}
@@ -129,146 +129,35 @@ func New(baseURL string, username string, password string, opts ...Option) *API 
 	}
 }
 
-/*
-func (c *Client) Get[T any](ctx context.Context, path string) (*T, *Result, error) {
-	entity := new(T)
-	result, err := c.Do[T](ctx, http.MethodGet, path, nil, entity)
-	if err != nil {
-		slog.Error("failed to perform GET request", "path", path, "error", err)
-		return nil, result, err
-	}
-	return entity, result, nil
-}
-
-func (c *Client) Post[T any](ctx context.Context, path string, object *T) (*Result, error) {
-	entity := new(T)
-	result, err := c.Do(ctx, http.MethodPost, path, object, entity)
-	if err != nil {
-		slog.Error("failed to perform POST request", "path", path, "object", object, "error", err)
-		return result, err
-	}
-	return result, nil
-}
-
-type Result struct {
-	Status     string // e.g. "200 OK"
-	StatusCode int    // e.g. 200
-	Location   *url.URL
-	Headers    http.Header
-	Body       io.Reader
-}
-
-// Do executes an HTTP request, attaching Basic Auth and standard headers.
-func (c *Client) Do[T any, S any](ctx context.Context, method string, path string, payload *T, entity *S) (*Result, error) {
-	return c.DoAs(ctx, "", method, path, payload, entity)
-}
-
-// DoAs executes an HTTP request, attaching Basic Auth and standard headers and impersonating
-// the given principal in the request.
-func (c *Client) DoAs[T any, S any](ctx context.Context, principal string, method string, path string, payload *T, entity *S) (*Result, error) {
-	url := c.baseURL + path
-
-	var reader io.Reader
-	if payload != nil {
-		slog.Debug("request payload", "data", payload)
-		data, err := json.Marshal(payload)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal request body: %w", err)
-		}
-		reader = bytes.NewBuffer(data)
-	}
-
-	request, err := http.NewRequestWithContext(ctx, method, url, reader)
-	if err != nil {
-		slog.Error("error creating request", "error", err)
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	// attach Basic Authentication header
-	request.SetBasicAuth(c.username, c.password)
-
-	// do impersonation if so instructed
-	if principal != "" {
-		request.Header.Set("Switch-To-Principal", principal)
-	}
-
-	// set standard API headers
-	request.Header.Set("Accept", "application/json")
-	if payload != nil {
-		request.Header.Set("Content-Type", "application/json")
-	}
-
-	response, err := c.Do(request)
-	if err != nil {
-		slog.Error("error performing request", "error", err)
-		return nil, fmt.Errorf("request failed: %w", err)
-	}
-
-	r := &Result{
-		Status:     response.Status,
-		StatusCode: response.StatusCode,
-		Headers:    response.Header,
-	}
-
-	location, err := response.Location()
-	if err != nil && err != http.ErrNoLocation {
-		slog.Warn("failed to retrieve Location header")
-	} else if location != nil {
-		slog.Debug("location header", "location", location.String())
-		r.Location = location
-	}
-
-	if response.Body != nil {
-		// ensure the response body is drained to allow TCP connection reuse;
-		// use separate function to allow immediate response body close
-		if err := func() error {
-			defer response.Body.Close()
-			data, err := io.ReadAll(response.Body)
-			if err != nil {
-				slog.Error("error reading response body", "error", err)
-				return err
-			}
-			slog.Debug("response body", "data", data)
-			r.Body = bytes.NewReader(data)
-			return nil
-		}(); err != nil {
-			return nil, err
-		}
-	}
-
-	// if the user wants to decode JSON into 'entity', process it here
-	if entity != nil && r.Body != nil {
-		if response.StatusCode < 200 || response.StatusCode >= 300 {
-			data, err := io.ReadAll(r.Body)
-			if err != nil {
-				slog.Error("error reading response body", "error", err)
-				return r, err
-			}
-			r.Body = bytes.NewReader(data)
-			if err := json.NewDecoder(r.Body).Decode(entity); err != nil {
-				slog.Error("failed to decode response", "error", err)
-				return nil, fmt.Errorf("failed to decode response body: %w", err)
-			}
-		}
-	}
-
-	return r, nil
-}
-*/
+const (
+	StatusHandledError = 240
+	StatusPartialError = 250
+)
 
 type Error struct {
-	Namespace string `json:"@ns"`
-	Object    struct {
-		Type           string    `json:"@type"`
-		Operation      string    `json:"operation"`
-		Status         string    `json:"status"`
-		Importance     string    `json:"importance"`
-		Start          time.Time `json:"start"`
-		End            time.Time `json:"end"`
-		Microseconds   int       `json:"microseconds"`
-		InvocationID   int       `json:"invocationId"`
-		Token          int64     `json:"token"`
-		Message        string    `json:"message"`
-		PartialResults []any     `json:"partialResults"`
-	} `json:"object"`
+	Ns     *string `json:"@ns,omitempty"`
+	Object *struct {
+		Ns           *string    `json:"@ns,omitempty"`
+		Type         *string    `json:"@type,omitempty"`
+		Operation    *string    `json:"operation,omitempty"`
+		Status       *string    `json:"status,omitempty"`
+		Importance   *string    `json:"importance,omitempty"`
+		Start        *time.Time `json:"start,omitempty"`
+		End          *time.Time `json:"end,omitempty"`
+		Microseconds int        `json:"microseconds,omitempty"`
+		InvocationID int        `json:"invocationId,omitempty"`
+		Params       *struct {
+			Entry *[]struct {
+				ParamValue struct {
+					Type  string `json:"@type,omitempty"`
+					Value string `json:"@value,omitempty"`
+				} `json:"paramValue,omitempty"`
+				Key *string `json:"key,omitempty"`
+			} `json:"entry,omitempty"`
+		} `json:"params,omitempty"`
+		Token          int64   `json:"token,omitempty"`
+		Message        *string `json:"message,omitempty"`
+		Details        *string `json:"details,omitempty"`
+		PartialResults *[]any  `json:"partialResults,omitempty"`
+	} `json:"object,omitempty"`
 }

@@ -9,7 +9,7 @@
 *.dylib
 dist/
 _test/midpoint
-_test/midpoint-quickstart.sh
+_test/midpoint-quickstart.patch
 _test/*.log
 
 # Test binary, built with `go test -c`
