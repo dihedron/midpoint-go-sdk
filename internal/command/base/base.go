@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/dihedron/midpoint-go-sdk/pkg/midpoint"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -24,6 +25,25 @@ type Command struct {
 	Format string `short:"F" long:"format" description:"The format of the output." optional:"true" default:"yaml" choice:"text" choice:"json" choice:"yaml" choice:"none" env:"MIDPOINT_FORMAT"`
 	// Debug enables debug mode.
 	Debug bool `short:"D" long:"debug" description:"Enable debug mode." optional:"true" env:"MIDPOINT_DEBUG"`
+	// Enable saving response to file.
+	ResponseSavePath *string `long:"save-response-to-file" description:"Enable saving HTTP responses to the given file." optional:"true" env:"MIDPOINT_RESPONSE_SAVE_TO_FILE"`
+}
+
+func (cmd *Command) GetAPI() *midpoint.API {
+	options := []midpoint.Option{
+		midpoint.WithDebug(cmd.Debug),
+	}
+	if cmd.Impersonate != nil {
+		options = append(options, midpoint.WithImpersonation(*cmd.Impersonate))
+	}
+	if cmd.ResponseSavePath != nil {
+		options = append(options, midpoint.WithSaveResponse(true, *cmd.ResponseSavePath))
+	}
+	if cmd.Debug {
+		options = append(options, midpoint.WithDebug(true), midpoint.WithTraceRequest(true))
+	}
+
+	return midpoint.New(cmd.Endpoint, cmd.Username, cmd.Password)
 }
 
 func (cmd *Command) Write(stream io.Writer, object any) error {

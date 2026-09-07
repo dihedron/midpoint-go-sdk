@@ -326,13 +326,6 @@ func (s *UserService) ReadPasswordPolicy(ctx context.Context, id string) (*Passw
 		slog.Error("error reading user password policy", "id", id, "error", err, "result", response)
 		return nil, err
 	}
-
-	// func() {
-	// 	f, _ := os.Create("output.json")
-	// 	defer f.Close()
-	// 	fmt.Fprintf(f, "------------------------ RESPONSE ------------------------ %s\n----------------------------------------------------------", response.String())
-	// }()
-
 	return response.Result().(*userPasswordPolicyWrapper).Object.Password, nil
 }
 

@@ -14,6 +14,23 @@ type API struct {
 	Self *SelfService
 }
 
+func (a *API) Close() error {
+	var client *resty.Client
+	if a.User != nil {
+		client = a.User.client
+		a.User.client = nil
+	}
+	if client == nil && a.Self != nil {
+		client = a.Self.client
+		a.Self.client = nil
+	}
+	// TODO: add more...
+	if client != nil {
+		return client.Close()
+	}
+	return nil
+}
+
 // option defines functional options for configuring the API.
 type Option func(*resty.Client)
 
@@ -105,8 +122,7 @@ func WithTraceRequest(enabled bool) Option {
 
 func WithSaveResponse(enabled bool, path string) Option {
 	return func(c *resty.Client) {
-		c.SetResponseSaveDirectory(path)
-		c.SetResponseSaveToFile(enabled)
+		c.SetResponseBodyUnlimitedReads(true).SetResponseSaveDirectory(path).SetResponseSaveToFile(enabled)
 	}
 }
 

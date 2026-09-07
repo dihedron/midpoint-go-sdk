@@ -5,7 +5,6 @@ import (
 	"log/slog"
 
 	"github.com/dihedron/midpoint-go-sdk/internal/command/base"
-	"github.com/dihedron/midpoint-go-sdk/pkg/midpoint"
 )
 
 type Reset struct {
@@ -19,7 +18,10 @@ type Reset struct {
 
 func (cmd *Reset) Execute(args []string) error {
 	slog.Debug("running user password reset command", "endpoint", cmd.Endpoint, "username", cmd.Username, "password", cmd.Password, "id", cmd.Positional.Id, "password", cmd.Positional.Password)
-	mp := midpoint.New(cmd.Endpoint, cmd.Username, cmd.Password)
+
+	mp := cmd.GetAPI()
+	defer mp.Close()
+
 	err := mp.User.ResetPassword(context.Background(), cmd.Positional.Id, cmd.Positional.Password)
 	if err != nil {
 		slog.Error("failed to create user", "error", err)

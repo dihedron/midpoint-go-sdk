@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/dihedron/midpoint-go-sdk/internal/command/base"
-	"github.com/dihedron/midpoint-go-sdk/pkg/midpoint"
 )
 
 type Policy struct {
@@ -21,13 +20,9 @@ func (cmd *Policy) Execute(args []string) error {
 		slog.Error("no ids provided")
 		return fmt.Errorf("at least one ID must be provided")
 	}
-	options := []midpoint.Option{
-		midpoint.WithDebug(cmd.Debug),
-	}
-	if cmd.Impersonate != nil {
-		options = append(options, midpoint.WithImpersonation(*cmd.Impersonate))
-	}
-	mp := midpoint.New(cmd.Endpoint, cmd.Username, cmd.Password, options...)
+
+	mp := cmd.GetAPI()
+	defer mp.Close()
 
 	var result error
 	for _, arg := range args {
