@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -14,25 +13,6 @@ import (
 
 type UserService struct {
 	Service
-}
-
-type Reference struct {
-	Ns         *string `json:"@ns,omitempty" yaml:"@ns,omitempty"`
-	Oid        *string `json:"oid,omitempty" yaml:"oid,omitempty"`
-	Relation   *string `json:"relation,omitempty" yaml:"relation,omitempty"`
-	Type       *string `json:"type,omitempty" yaml:"type,omitempty"`
-	TargetName *string `json:"targetName,omitempty" yaml:"targetName,omitempty"`
-}
-
-type Storage struct {
-	CreateTimestamp *time.Time `json:"createTimestamp,omitempty" yaml:"createTimestamp,omitempty"`
-	CreateChannel   *string    `json:"createChannel,omitempty" yaml:"createChannel,omitempty"`
-	CreatorRef      *Reference `json:"creatorRef"`
-	CreateTaskRef   *Reference `json:"createTaskRef"`
-	ModifyTimestamp *time.Time `json:"modifyTimestamp,omitempty" yaml:"modifyTimestamp,omitempty"`
-	ModifierRef     *Reference `json:"modifierRef"`
-	ModifyChannel   *string    `json:"modifyChannel,omitempty" yaml:"modifyChannel,omitempty"`
-	ModifyTaskRef   *Reference `json:"modifyTaskRef"`
 }
 
 type User struct {
@@ -164,6 +144,20 @@ type User struct {
 	LinkRef    *Reference `json:"linkRef,omitempty" yaml:"linkRef,omitempty"`
 }
 
+// UnmarshalFlag provides support for loading user's data at the
+// command line from a file on disk.
+func (u *User) UnmarshalFlag(value string) error {
+	return rawdata.UnmarshalInto(value, u)
+}
+
+type Reference struct {
+	Ns         *string `json:"@ns,omitempty" yaml:"@ns,omitempty"`
+	Oid        *string `json:"oid,omitempty" yaml:"oid,omitempty"`
+	Relation   *string `json:"relation,omitempty" yaml:"relation,omitempty"`
+	Type       *string `json:"type,omitempty" yaml:"type,omitempty"`
+	TargetName *string `json:"targetName,omitempty" yaml:"targetName,omitempty"`
+}
+
 type Password struct {
 	MinOccurs                     *string    `json:"minOccurs,omitempty" yaml:"minOccurs,omitempty"`
 	LockoutMaxFailedAttempts      int        `json:"lockoutMaxFailedAttempts,omitempty" yaml:"lockoutMaxFailedAttempts,omitempty"`
@@ -172,10 +166,15 @@ type Password struct {
 	ValuePolicyRef                *Reference `json:"valuePolicyRef,omitempty" yaml:"valuePolicyRef,omitempty"`
 }
 
-// UnmarshalFlag provides support for loading user's data at the
-// command line from a file on disk.
-func (u *User) UnmarshalFlag(value string) error {
-	return rawdata.UnmarshalInto(value, u)
+type Storage struct {
+	CreateTimestamp *time.Time `json:"createTimestamp,omitempty" yaml:"createTimestamp,omitempty"`
+	CreateChannel   *string    `json:"createChannel,omitempty" yaml:"createChannel,omitempty"`
+	CreatorRef      *Reference `json:"creatorRef"`
+	CreateTaskRef   *Reference `json:"createTaskRef"`
+	ModifyTimestamp *time.Time `json:"modifyTimestamp,omitempty" yaml:"modifyTimestamp,omitempty"`
+	ModifierRef     *Reference `json:"modifierRef"`
+	ModifyChannel   *string    `json:"modifyChannel,omitempty" yaml:"modifyChannel,omitempty"`
+	ModifyTaskRef   *Reference `json:"modifyTaskRef"`
 }
 
 type userWrapper struct {
@@ -189,6 +188,35 @@ type userListWrapper struct {
 		Type   string `json:"@type"`
 		Object []User `json:"object"`
 	} `json:"object"`
+}
+
+type userPasswordPolicyWrapper struct {
+	Ns     *string `json:"@ns,omitempty" yaml:"@ns,omitempty"`
+	Object struct {
+		Type     *string   `json:"@type,omitempty" yaml:"@type,omitempty"`
+		Password *Password `json:"password,omitempty" yaml:"password,omitempty"`
+	} `json:"object,omitempty" yaml:"object,omitempty"`
+}
+
+type PasswordResetRequest struct {
+	ResetMethod *string `json:"resetMethod,omitempty" yaml:"resetMethod,omitempty"`
+	UserEntry   *string `json:"userEntry,omitempty" yaml:"userEntry,omitempty"`
+}
+
+type PasswordResetResponse struct {
+	Ns     *string `json:"@ns,omitempty" yaml:"@ns,omitempty"`
+	Object struct {
+		Type    string `json:"@type"`
+		Message struct {
+			Type            string `json:"@type"`
+			Key             string `json:"key"`
+			FallbackMessage string `json:"fallbackMessage"`
+		} `json:"message"`
+	} `json:"object"`
+}
+
+type userPasswordResetWrapper struct {
+	ExecuteCredentialResetRequest *PasswordResetRequest `json:"executeCredentialResetRequest,omitempty" yaml:"executeCredentialResetRequest,omitempty"`
 }
 
 // Read reads information about a user.
@@ -284,7 +312,7 @@ func (s *UserService) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *UserService) PasswordPolicy(ctx context.Context, id string) (*Password, error) {
+func (s *UserService) ReadPasswordPolicy(ctx context.Context, id string) (*Password, error) {
 	error := &Error{}
 	response, err := s.client.
 		R().
@@ -299,19 +327,37 @@ func (s *UserService) PasswordPolicy(ctx context.Context, id string) (*Password,
 		return nil, err
 	}
 
-	func() {
-		f, _ := os.Create("output.json")
-		defer f.Close()
-		fmt.Fprintf(f, "------------------------ RESPONSE ------------------------ %s\n----------------------------------------------------------", response.String())
-	}()
+	// func() {
+	// 	f, _ := os.Create("output.json")
+	// 	defer f.Close()
+	// 	fmt.Fprintf(f, "------------------------ RESPONSE ------------------------ %s\n----------------------------------------------------------", response.String())
+	// }()
 
 	return response.Result().(*userPasswordPolicyWrapper).Object.Password, nil
 }
 
-type userPasswordPolicyWrapper struct {
-	Ns     *string `json:"@ns,omitempty" yaml:"@ns,omitempty"`
-	Object struct {
-		Type     *string   `json:"@type,omitempty" yaml:"@type,omitempty"`
-		Password *Password `json:"password,omitempty" yaml:"password,omitempty"`
-	} `json:"object,omitempty" yaml:"object,omitempty"`
+func (s *UserService) ResetPassword(ctx context.Context, id string, password string) error {
+	error := &Error{}
+	response, err := s.client.
+		R().
+		SetContext(ctx).
+		SetQueryParam("options", "raw").
+		SetPathParam("id", id).
+		SetBody(&userPasswordResetWrapper{ExecuteCredentialResetRequest: &PasswordResetRequest{
+			ResetMethod: new("passwordReset"),
+			UserEntry:   new(password),
+		}}).
+		SetResult(&PasswordResetResponse{}).
+		SetResultError(error).
+		Post("/users/{id}/credential")
+	if err != nil {
+		slog.Error("error creating user password reset", "user", id, "password", password, "error", err, "result", response)
+		return err
+	}
+	if response.StatusCode() != http.StatusOK {
+		slog.Error("error resetting user password", "id", id, "password", password, "message", error.Object.Message)
+		return fmt.Errorf("%s", error.Object.Message)
+	}
+	slog.Debug("user's password reset", "id", id, "password", password, "message", response.Result().(*PasswordResetResponse).Object.Message)
+	return nil
 }

@@ -32,7 +32,7 @@ func (cmd *Policy) Execute(args []string) error {
 	var result error
 	for _, arg := range args {
 		slog.Debug("reading user", "id", arg)
-		self, err := mp.User.PasswordPolicy(context.Background(), arg)
+		self, err := mp.User.ReadPasswordPolicy(context.Background(), arg)
 		if err != nil {
 			slog.Error("error reading user", "id", arg, "error", err)
 			errors.Join(result, err)
