@@ -1,0 +1,27 @@
+{
+  "query": {
+    "filter": {
+      "and": [
+        {
+          "equal": {
+            "path": "givenName",
+            "value": "John"
+          }
+        },
+        {
+          "ref": {
+            "path": "roleMembershipRef",
+            "value": [
+              {
+                "oid": "FIRST_ROLE_OID_HERE"
+              },
+              {
+                "oid": "SECOND_ROLE_OID_HERE"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
